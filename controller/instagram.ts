@@ -1,6 +1,6 @@
 import axios, { Axios, AxiosError, AxiosResponse } from "axios";
-import express, { Request, Response } from "express";
-import Joi, { any } from "joi";
+import express, { Request, response, Response } from "express";
+import Joi, { any, boolean } from "joi";
 import dotenv from "dotenv";
 import { UserProfile } from "../models/instagramProfileInterface";
 
@@ -10,20 +10,19 @@ dotenv.config();
 const URL_INSTAGRAM: string | undefined = process.env.URL_INSTAGRAM;
 const DEFAULT_QUERY_PARAM: string | undefined = process.env.DEFAULT_QUERY_PARM;
 
-router.get("/posts", async (req: Request, res: Response) => {
+router.get("/posts", async (req: Request, res: Response): Promise<Response> => {
   const { error } = validateUserDetails(req.query);
   if (error) {
-    res.status(400).send(error);
-    return;
+    return res.status(400).send(error);
   }
 
   const username = String(req.query.username);
   const sessionId = String(req.query.sessionId);
 
   try {
-    res.json(await getPostsByUser(username, sessionId));
+    return res.json(await getPostsByUser(username, sessionId));
   } catch (error: any) {
-    res.status(500).send(`${error}`);
+    return res.status(500).send(`${error}`);
   }
 });
 
@@ -38,6 +37,9 @@ const getPostsByUser = async (
   };
 
   const userProfile = await getUserProfile(username, config);
+  if (isLoginRedirect(userProfile)) {
+    throw new Error("Too many requests to instagram public API.");
+  }
   return getPostsFromUserProfile(userProfile.data);
 };
 
@@ -55,10 +57,21 @@ function buildInstagramUrl(username: string): string {
 function validateUserDetails(credentials: {}) {
   const schema = Joi.object({
     username: Joi.string().min(1).required(),
-    sessionId: Joi.string().min(1).required(),
+    sessionId: Joi.string().required(),
   });
   return schema.validate(credentials);
 }
+
+const isLoginRedirect = (response: AxiosResponse): boolean => {
+  let result: boolean = true;
+  const responseType: string = response.headers["content-type"];
+
+  if (responseType && responseType.includes("application/json")) {
+    result = false;
+    return result;
+  }
+  return result;
+};
 
 const getPostsFromUserProfile = (profileData: any): UserProfile => {
   return {
