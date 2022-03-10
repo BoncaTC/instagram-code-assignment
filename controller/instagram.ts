@@ -1,9 +1,11 @@
-import { Axios, AxiosError, AxiosResponse } from "axios";
+import axios, { Axios, AxiosError, AxiosResponse } from "axios";
 import express, { Request, Response } from "express";
-import Joi from "joi";
+import Joi, { any } from "joi";
+import dotenv from "dotenv";
+import { UserProfile } from "../models/instagramProfileInterface";
+
 const router = express.Router();
-const axios = require("axios");
-require("dotenv").config();
+dotenv.config();
 
 const URL_INSTAGRAM: string | undefined = process.env.URL_INSTAGRAM;
 const DEFAULT_QUERY_PARAM: string | undefined = process.env.DEFAULT_QUERY_PARM;
@@ -12,6 +14,7 @@ router.get("/posts", async (req: Request, res: Response) => {
   const { error } = validateUserDetails(req.query);
   if (error) {
     res.status(400).send(error);
+    return;
   }
 
   const username = String(req.query.username);
@@ -19,30 +22,30 @@ router.get("/posts", async (req: Request, res: Response) => {
 
   try {
     res.json(await getPostsByUser(username, sessionId));
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).send(`${error}`);
   }
 });
 
-const getPostsByUser = async (username: string, session_id: string) => {
+const getPostsByUser = async (
+  username: string,
+  session_id: string
+): Promise<UserProfile> => {
   const config = {
     headers: {
       Cookie: `sessionid=${session_id}`,
     },
   };
 
-  const userProfile: any = await getUserProfile(username, config);
+  const userProfile = await getUserProfile(username, config);
   return getPostsFromUserProfile(userProfile.data);
 };
 
-const getUserProfile = async (username: string, config: {}): Promise<any> => {
-  return await axios
-    .get(buildInstagramUrl(username), config)
-    .catch(function (error: AxiosError) {
-      if (error.isAxiosError) {
-        return error.code;
-      }
-    });
+const getUserProfile = async (
+  username: string,
+  config: {}
+): Promise<AxiosResponse> => {
+  return await axios.get(buildInstagramUrl(username), config);
 };
 
 function buildInstagramUrl(username: string): string {
@@ -57,7 +60,7 @@ function validateUserDetails(credentials: {}) {
   return schema.validate(credentials);
 }
 
-const getPostsFromUserProfile = (profileData: any) => {
+const getPostsFromUserProfile = (profileData: any): UserProfile => {
   return {
     lastRetrievedDateTime: new Date(),
     biography: profileData.graphql.user.biography,
@@ -75,9 +78,9 @@ const getPostsFromUserProfile = (profileData: any) => {
           .edge_media_to_comment.count,
       postType:
         profileData.graphql.user.edge_owner_to_timeline_media.edges[0].node
-          .product_type,
+          .__typename,
     },
   };
 };
 
-module.exports = router;
+export { router };
