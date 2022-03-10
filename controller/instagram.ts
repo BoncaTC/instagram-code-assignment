@@ -3,6 +3,7 @@ import express, { Request, response, Response } from "express";
 import Joi, { any, boolean } from "joi";
 import dotenv from "dotenv";
 import { UserProfile } from "../models/instagramProfileInterface";
+import { PROFILE_MOCK_DATA } from "../mock/profileMock";
 
 const router = express.Router();
 dotenv.config();
@@ -38,7 +39,7 @@ const getPostsByUser = async (
 
   const userProfile = await getUserProfile(username, config);
   if (isLoginRedirect(userProfile)) {
-    throw new Error("Too many requests to instagram public API.");
+    return getPostsFromUserProfile(PROFILE_MOCK_DATA);
   }
   return getPostsFromUserProfile(userProfile.data);
 };
