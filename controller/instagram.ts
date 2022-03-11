@@ -4,12 +4,17 @@ import Joi, { any, boolean } from "joi";
 import dotenv from "dotenv";
 import { UserProfile } from "../models/instagramProfileInterface";
 import { PROFILE_MOCK_DATA } from "../mock/profileMock";
+import { format } from "date-fns";
 
 const router = express.Router();
 dotenv.config();
 
 const URL_INSTAGRAM: string | undefined = process.env.URL_INSTAGRAM;
 const DEFAULT_QUERY_PARAM: string | undefined = process.env.DEFAULT_QUERY_PARM;
+
+router.get("/", async (req: Request, res: Response): Promise<Response> => {
+  return res.status(200);
+});
 
 router.get("/posts", async (req: Request, res: Response): Promise<Response> => {
   const { error } = validateUserDetails(req.query);
@@ -27,6 +32,12 @@ router.get("/posts", async (req: Request, res: Response): Promise<Response> => {
   }
 });
 
+/**
+ * Queries instagram API for user profile data.
+ * @param username
+ * @param session_id
+ * @returns A object with requested information about the user.
+ */
 const getPostsByUser = async (
   username: string,
   session_id: string
@@ -44,17 +55,21 @@ const getPostsByUser = async (
   return getPostsFromUserProfile(userProfile.data);
 };
 
-const getUserProfile = async (
+export const getUserProfile = async (
   username: string,
   config: {}
 ): Promise<AxiosResponse> => {
   return await axios.get(buildInstagramUrl(username), config);
 };
 
-function buildInstagramUrl(username: string): string {
+export function buildInstagramUrl(username: string): string {
   return `${URL_INSTAGRAM}${username}${DEFAULT_QUERY_PARAM}`;
 }
-
+/**
+ * Joi library used to validate input data.
+ * @param credentials - user credentials = username and seesionid.
+ * @returns error if erroneous data was received.
+ */
 function validateUserDetails(credentials: {}) {
   const schema = Joi.object({
     username: Joi.string().min(1).required(),
@@ -63,6 +78,12 @@ function validateUserDetails(credentials: {}) {
   return schema.validate(credentials);
 }
 
+/**
+ * The method checks if the request is redirected to the instagram login page.
+ * @param response resulted from axios get request.
+ * @returns true - if the request had been redirected
+            false - if the request was not redirected
+ */
 const isLoginRedirect = (response: AxiosResponse): boolean => {
   let result: boolean = true;
   const responseType: string = response.headers["content-type"];
@@ -74,9 +95,9 @@ const isLoginRedirect = (response: AxiosResponse): boolean => {
   return result;
 };
 
-const getPostsFromUserProfile = (profileData: any): UserProfile => {
+export const getPostsFromUserProfile = (profileData: any): UserProfile => {
   return {
-    lastRetrievedDateTime: new Date(),
+    lastRetrievedDateTime: format(new Date(), "yyyy-MM-dd"),
     biography: profileData.graphql.user.biography,
     fullName: profileData.graphql.user.full_name,
     followersCount: profileData.graphql.user.edge_followed_by.count,

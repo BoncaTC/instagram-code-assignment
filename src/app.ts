@@ -1,6 +1,6 @@
 import express from "express";
 import { router as instagram } from "../controller/instagram";
-const app = express();
+export const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

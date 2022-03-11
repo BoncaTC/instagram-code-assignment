@@ -1,5 +1,5 @@
 export interface UserProfile {
-  lastRetrievedDateTime: Date;
+  lastRetrievedDateTime: Date | string;
   biography: string;
   fullName: string;
   followersCount: number;
